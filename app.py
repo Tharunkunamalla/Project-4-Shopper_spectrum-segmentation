@@ -4,7 +4,7 @@ import pandas as pd
 
 # Load models and data
 kmeans = pickle.load(open("models/rfm_kmeans_model.pkl", "rb"))
-scaler = pickle.load(open("models/scaler.pkl", "rb"))
+scaler = pickle.load(open("models/rfm_scaler.pkl", "rb"))
 sim_matrix = pickle.load(open("models/product_similarity.pkl", "rb"))
 df = pd.read_csv("data/online_retail.csv", encoding='ISO-8859-1')
 
@@ -74,11 +74,12 @@ elif st.session_state["nav"] == "Clustering":
         label = kmeans.predict(input_scaled)[0]
 
         segment_map = {
-            0: "At-Risk Customer",
-            1: "Regular Buyer",
-            2: "High-Value Customer",
-            3: "Occasional Shopper"
-        }
+        0: "Regular Buyer",
+        1: "At-Risk Customer",
+        2: "High-Value Customer",
+        3: "Occasional Shopper"
+    }
+
 
         st.success(f"This customer belongs to: **{segment_map.get(label, 'Unknown')}**")
 
@@ -103,6 +104,6 @@ elif st.session_state["nav"] == "Recommendation":
                     if similar_desc.any():
                         st.markdown(f"{i+1}. {similar_desc[0]}")
             else:
-                st.warning("⚠️ Similarity data not found for this product.")
+                st.warning("Similarity data not found for this product.")
         else:
-            st.warning("⚠️ Product name not found in database.")
+            st.warning("Product name not found in database.")
