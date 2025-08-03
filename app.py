@@ -34,7 +34,7 @@ if "nav" not in st.session_state:
 # --- Sidebar Navigation ---
 with st.sidebar:
     st.markdown("<div class='sidebar-box'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>🧭 Navigate</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Navigate</h3>", unsafe_allow_html=True)
     page = st.radio(
         "Go to",
         ["Home", "Clustering", "Recommendation"],
@@ -84,26 +84,44 @@ elif st.session_state["nav"] == "Clustering":
         st.success(f"This customer belongs to: **{segment_map.get(label, 'Unknown')}**")
 
 # --- Recommendation Page ---
+# --- Recommendation Page ---
 elif st.session_state["nav"] == "Recommendation":
     st.subheader("🔍 Get Product Recommendations")
 
+    # Ensure sim_matrix uses string index/columns
+    sim_matrix.columns = sim_matrix.columns.astype(str)
+    sim_matrix.index = sim_matrix.index.astype(str)
+
+    # Normalize product names for matching
+    df["Description"] = df["Description"].astype(str).str.strip()
+
     product_name_input = st.text_input("Enter Product Name (Description):")
 
-    if st.button("Get Recommendations"):
+    if st.button("Get Recommendations") and product_name_input.strip():
+        product_name_input = product_name_input.strip()
+
+        # Try exact match
         matching_products = df[df['Description'].str.lower() == product_name_input.lower()]
 
-        if not matching_products.empty:
-            product_code = matching_products["StockCode"].values[0]
-
-            if product_code in sim_matrix.columns:
-                top_similar = sim_matrix[product_code].sort_values(ascending=False)[1:6].index.tolist()
-
-                st.markdown("### Recommended Product Names:")
-                for i, code in enumerate(top_similar):
-                    similar_desc = df[df["StockCode"] == code]["Description"].dropna().unique()
-                    if similar_desc.any():
-                        st.markdown(f"{i+1}. {similar_desc[0]}")
+        # Optional fuzzy fallback
+        if matching_products.empty:
+            from fuzzywuzzy import process
+            all_descriptions = df['Description'].dropna().unique()
+            best_match, score = process.extractOne(product_name_input, all_descriptions)
+            if score > 80:
+                st.info(f"No exact match found. Using closest match: **{best_match}** (score: {score})")
+                product_name_input = best_match
             else:
-                st.warning("Similarity data not found for this product.")
+                st.warning("❌ No suitable match found in product descriptions.")
+                st.stop()
+
+        st.write("Matched Product:", product_name_input)
+
+        if product_name_input in sim_matrix.columns:
+            top_similar = sim_matrix[product_name_input].sort_values(ascending=False)[1:6].index.tolist()
+
+            st.markdown("### 🧾 Recommended Products:")
+            for i, desc in enumerate(top_similar):
+                st.markdown(f"{i+1}. {desc}")
         else:
-            st.warning("Product name not found in database.")
+            st.warning("⚠️ Similarity data not found for this product.")
